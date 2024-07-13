@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "name": "tinybase-synchronizer",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "tinybase": "^5.0.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.11"
+  }
+}
