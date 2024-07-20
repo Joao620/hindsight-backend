@@ -72,7 +72,14 @@ webServer.on("upgrade", (request, socket, head) => {
   const channel = acquireChannel(request.url);
 
   channel.webSocketServer.handleUpgrade(request, socket, head, (client) => {
+    const ping = setInterval(() => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.ping();
+      }
+    }, 1000 * 30);
+
     client.on("close", () => {
+      clearInterval(ping);
       disposeChannel(request.url);
     });
 
@@ -80,4 +87,5 @@ webServer.on("upgrade", (request, socket, head) => {
   });
 });
 
-webServer.listen(5000);
+const port = parseInt(process.env.PORT, 10);
+webServer.listen(isNaN(port) ? 5000 : port);
