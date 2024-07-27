@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "tinybase-synchronizer",
+  "name": "tinysync",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

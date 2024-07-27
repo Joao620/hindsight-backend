@@ -4,7 +4,7 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.tinybase-synchronizer.rule=Host(`tinybase-synchronizer.local.crz.li`)"
+      - "traefik.http.routers.tinysync.rule=Host(`tinysync.local.crz.li`)"
 
 networks:
   traefik:
