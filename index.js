@@ -62,6 +62,15 @@ function disposeChannel(key) {
   channels.delete(key);
 }
 
+webServer.on("request", (request, response) => {
+  if (request.url === "/") {
+    response.writeHead(301, { Location: "https://github.com/haggen/tinysync" });
+  } else {
+    response.writeHead(426, { Connection: "Upgrade", Upgrade: "websocket" });
+  }
+  response.end();
+});
+
 webServer.on("upgrade", (request, socket, head) => {
   if (request.url === "/") {
     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
