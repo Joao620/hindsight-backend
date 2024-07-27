@@ -96,5 +96,12 @@ webServer.on("upgrade", (request, socket, head) => {
   });
 });
 
-const port = parseInt(process.env.PORT, 10);
-webServer.listen(isNaN(port) ? 5000 : port);
+const port = parseInt(process.env.PORT || "5000", 10);
+
+if (Number.isNaN(port)) {
+  throw new Error(`Invalid PORT value: ${JSON.stringify(process.env.PORT)}`);
+}
+
+webServer.listen(port, () => {
+  console.log(`Listening on http://localhost:${port}`);
+});
