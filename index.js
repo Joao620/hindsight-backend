@@ -1,98 +1,93 @@
 import { createServer } from "http";
-import { WebSocketServer } from "ws";
+import { WebSocket, WebSocketServer } from "ws";
 import { createWsServer } from "tinybase/synchronizers/synchronizer-ws-server";
 
+// Client's deadline to respond to a ping, in milliseconds.
+const TTL = 10 * 1000;
+
 /**
- * @typedef {Object} Channel
- * @property {string} key
- * @property {WebSocketServer} webSocketServer
- * @property {import("tinybase/synchronizers/synchronizer-ws-server").WsServer} synchronizer
+ * Log a message.
+ * @param {...unknown} message
  */
+function log(...message) {
+  console.log(`${new Date().toISOString()} ${message.join(" ")}`);
+}
+
+/**
+ * Set a timeout to terminate the client. Delay is TTL plus latency margin.
+ * @param {WebSocket} client
+ */
+function setClientTimeout(client) {
+  return setTimeout(() => {
+    client.terminate();
+  }, TTL + 1000);
+}
 
 const webServer = createServer();
+const webSocketServer = new WebSocketServer({ noServer: true });
+const synchronizer = createWsServer(webSocketServer);
 
-/**
- * @type {Map<string, Channel>}
- */
-const channels = new Map();
+webSocketServer.on("connection", (client, request) => {
+  const url = new URL(
+    request.url,
+    `ws://${request.headers.host || "localhost"}`
+  );
+  const roomId = url.pathname.slice(1);
+  const clientIds = synchronizer.getClientIds(roomId);
 
-/**
- * @param {string} key
- * @returns {Channel}
- */
-function createChannel(key) {
-  const webSocketServer = new WebSocketServer({ noServer: true });
-  const synchronizer = createWsServer(webSocketServer);
+  let timeout = setClientTimeout(client);
 
-  return {
-    key,
-    webSocketServer,
-    synchronizer,
-  };
-}
+  client.on("pong", () => {
+    clearTimeout(timeout);
+    timeout = setClientTimeout(client);
+  });
 
-/**
- * @param {string} key
- * @returns {Channel}
- */
-function acquireChannel(key) {
-  if (!channels.has(key)) {
-    channels.set(key, createChannel(key));
-  }
-  return channels.get(key);
-}
+  const ping = setInterval(() => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.ping();
+    }
+  }, TTL);
 
-/**
- * @param {string} key
- * @returns {void}
- */
-function disposeChannel(key) {
-  const channel = channels.get(key);
+  client.on("close", (code, readon) => {
+    const clientIds = synchronizer.getClientIds(roomId);
 
-  if (!channel) {
-    return;
-  }
+    clearInterval(ping);
+    clearTimeout(timeout);
 
-  if (channel.webSocketServer.clients.size > 0) {
-    return;
-  }
+    log("CLOSED", url, code, clientIds.length, clientIds);
+  });
 
-  channel.webSocketServer.close();
-  channel.synchronizer.destroy();
-  channels.delete(key);
-}
+  log("CONNECTED", url, clientIds.length, clientIds);
+});
 
 webServer.on("request", (request, response) => {
-  if (request.url === "/") {
+  const url = new URL(
+    request.url,
+    `ws://${request.headers.host || "localhost"}`
+  );
+
+  if (url.pathname === "/") {
+    // Redirect to the GitHub repository on the root path.
     response.writeHead(301, { Location: "https://github.com/haggen/tinysync" });
   } else {
+    // Require upgrade on any other path.
     response.writeHead(426, { Connection: "Upgrade", Upgrade: "websocket" });
   }
   response.end();
+
+  log(request.method, url, response.statusCode);
 });
 
 webServer.on("upgrade", (request, socket, head) => {
+  // Channel is derived from request's path and it can't be empty.
   if (request.url === "/") {
     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
     socket.destroy();
     return;
   }
 
-  const channel = acquireChannel(request.url);
-
-  channel.webSocketServer.handleUpgrade(request, socket, head, (client) => {
-    const ping = setInterval(() => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.ping();
-      }
-    }, 1000 * 30);
-
-    client.on("close", () => {
-      clearInterval(ping);
-      disposeChannel(request.url);
-    });
-
-    channel.webSocketServer.emit("connection", client, request);
+  webSocketServer.handleUpgrade(request, socket, head, (client) => {
+    webSocketServer.emit("connection", client, request);
   });
 });
 
@@ -103,5 +98,5 @@ if (Number.isNaN(port)) {
 }
 
 webServer.listen(port, () => {
-  console.log(`Listening on http://localhost:${port}`);
+  log(`Listening on http://localhost:${port}`);
 });
