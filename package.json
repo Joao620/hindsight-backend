@@ -12,5 +12,9 @@
   },
   "devDependencies": {
     "@types/ws": "^8.5.11"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
+
