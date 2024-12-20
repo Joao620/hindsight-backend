@@ -1,9 +1,12 @@
 import { createServer } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { createWsServer } from "tinybase/synchronizers/synchronizer-ws-server";
+import { createMergeableStore } from "tinybase";
+import { createPostgresPersister } from 'tinybase/persisters/persister-postgres';
+import postgres from "postgres";
 
 // Client's deadline to respond to a ping, in milliseconds.
-const TTL = 10 * 1000;
+const TTL = 15 * 1000;
 
 /**
  * Log a message.
@@ -12,6 +15,7 @@ const TTL = 10 * 1000;
 function log(...message) {
   console.log(`${new Date().toISOString()} ${message.join(" ")}`);
 }
+
 
 /**
  * Set a timeout to terminate the client. Delay is TTL plus latency margin.
@@ -23,9 +27,30 @@ function setClientTimeout(client) {
   }, TTL + 1000);
 }
 
+//postgres://hindsight:banana123@localhost:5432/hindsight-db
+log('database url', process.env.DATABASE_URL);
+
+// sql`SELECT * FROM "tableforroom-cvgvzhhjq3"`
+//   .then((result) => console.log(result))
+//   .catch((err) => log("Database connection failed", err));
+
 const webServer = createServer();
 const webSocketServer = new WebSocketServer({ noServer: true });
-const synchronizer = createWsServer(webSocketServer);
+const synchronizer = createWsServer(webSocketServer, 
+  (pathId) =>
+    createPostgresPersister(
+      createMergeableStore(),
+      postgres(process.env.DATABASE_URL),
+      'tableforroom-' + pathId
+    )
+);
+
+// (pathId) =>
+//   createSqlite3Persister(
+//     createMergeableStore(),
+//     new sqlite3.Database(pathId + ".sqlite3"),
+//   )
+
 
 webSocketServer.on("connection", (client, request) => {
   const url = new URL(
@@ -36,8 +61,11 @@ webSocketServer.on("connection", (client, request) => {
   const clientIds = synchronizer.getClientIds(roomId);
 
   let timeout = setClientTimeout(client);
+  let lastContact = Date.now();
 
   client.on("pong", () => {
+    log('pongtime', Date.now() - lastContact);
+    lastContact = Date.now();
     clearTimeout(timeout);
     timeout = setClientTimeout(client);
   });
@@ -69,6 +97,10 @@ webServer.on("request", (request, response) => {
   if (url.pathname === "/") {
     // Redirect to the GitHub repository on the root path.
     response.writeHead(301, { Location: "https://github.com/haggen/tinysync" });
+  } else if (url.pathname === "/wake-up") {
+    // just to wakeup the server
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.writeHead(200);
   } else {
     // Require upgrade on any other path.
     response.writeHead(426, { Connection: "Upgrade", Upgrade: "websocket" });
