@@ -4,7 +4,7 @@ import { createWsServer } from "tinybase/synchronizers/synchronizer-ws-server";
 import { createMergeableStore } from "tinybase";
 import { createPostgresPersister } from 'tinybase/persisters/persister-postgres';
 import postgres from "postgres";
-import logger from "./logger";
+import logger from "./logger.js";
 
 // Client's deadline to respond to a ping, in milliseconds.
 const TTL = 15 * 1000;
@@ -21,7 +21,7 @@ function setClientTimeout(client) {
 }
 
 //postgres://hindsight:banana123@localhost:5432/hindsight-db
-logger.log('database url', process.env.DATABASE_URL);
+logger.silly('database url ' + process.env.DATABASE_URL);
 
 // sql`SELECT * FROM "tableforroom-cvgvzhhjq3"`
 //   .then((result) => console.log(result))
@@ -58,7 +58,7 @@ webSocketServer.on("connection", (client, request) => {
 
   client.on("pong", () => {
     const newNow = Date.now();
-    logger('pongtime', newNow - lastContact - TTL);
+    logger.verbose('pongtime', newNow - lastContact - TTL);
     lastContact = newNow;
     clearTimeout(timeout);
     timeout = setClientTimeout(client);
@@ -76,10 +76,10 @@ webSocketServer.on("connection", (client, request) => {
     clearInterval(ping);
     clearTimeout(timeout);
 
-    logger.log("CLOSED", url, code, clientIds.length, clientIds);
+    logger.info("CLOSED", url, code, clientIds.length, clientIds);
   });
 
-  logger.log("CONNECTED", url, clientIds.length, clientIds);
+  logger.info("CONNECTED", url, clientIds.length, clientIds);
 });
 
 webServer.on("request", (request, response) => {
@@ -124,5 +124,5 @@ if (Number.isNaN(port)) {
 }
 
 webServer.listen(port, () => {
-  logger.log(`Listening on http://localhost:${port}`);
+  logger.info(`Listening on http://localhost:${port}`);
 });
