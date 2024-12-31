@@ -1,0 +1,11 @@
+init_config:
+
+instances:
+
+##Log section
+logs:
+  - type: file
+    path: "le_logs.log"
+    service: hindsight-service
+    source: nodejs
+    sourcecategory: sourcecode

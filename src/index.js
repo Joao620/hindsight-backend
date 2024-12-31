@@ -4,17 +4,10 @@ import { createWsServer } from "tinybase/synchronizers/synchronizer-ws-server";
 import { createMergeableStore } from "tinybase";
 import { createPostgresPersister } from 'tinybase/persisters/persister-postgres';
 import postgres from "postgres";
+import logger from "./logger";
 
 // Client's deadline to respond to a ping, in milliseconds.
 const TTL = 15 * 1000;
-
-/**
- * Log a message.
- * @param {...unknown} message
- */
-function log(...message) {
-  console.log(`${new Date().toISOString()} ${message.join(" ")}`);
-}
 
 
 /**
@@ -28,7 +21,7 @@ function setClientTimeout(client) {
 }
 
 //postgres://hindsight:banana123@localhost:5432/hindsight-db
-log('database url', process.env.DATABASE_URL);
+logger.log('database url', process.env.DATABASE_URL);
 
 // sql`SELECT * FROM "tableforroom-cvgvzhhjq3"`
 //   .then((result) => console.log(result))
@@ -40,7 +33,7 @@ const synchronizer = createWsServer(webSocketServer,
   (pathId) =>
     createPostgresPersister(
       createMergeableStore(),
-      postgres(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false } }),
+      postgres("postgres://hindsight:banana123@localhost:5432/hindsight-db"),
       'tableforroom-' + pathId
     )
 );
@@ -65,7 +58,7 @@ webSocketServer.on("connection", (client, request) => {
 
   client.on("pong", () => {
     const newNow = Date.now();
-    log('pongtime', newNow - lastContact);
+    logger('pongtime', newNow - lastContact - TTL);
     lastContact = newNow;
     clearTimeout(timeout);
     timeout = setClientTimeout(client);
@@ -83,10 +76,10 @@ webSocketServer.on("connection", (client, request) => {
     clearInterval(ping);
     clearTimeout(timeout);
 
-    log("CLOSED", url, code, clientIds.length, clientIds);
+    logger.log("CLOSED", url, code, clientIds.length, clientIds);
   });
 
-  log("CONNECTED", url, clientIds.length, clientIds);
+  logger.log("CONNECTED", url, clientIds.length, clientIds);
 });
 
 webServer.on("request", (request, response) => {
@@ -108,7 +101,7 @@ webServer.on("request", (request, response) => {
   }
   response.end();
 
-  log(request.method, url, response.statusCode);
+  logger.log(request.method, url, response.statusCode);
 });
 
 webServer.on("upgrade", (request, socket, head) => {
@@ -131,5 +124,5 @@ if (Number.isNaN(port)) {
 }
 
 webServer.listen(port, () => {
-  log(`Listening on http://localhost:${port}`);
+  logger.log(`Listening on http://localhost:${port}`);
 });

@@ -10,6 +10,7 @@
     "postgres": "^3.4.5",
     "sqlite3": "^5.1.7",
     "tinybase": "^5.4.0",
+    "winston": "^3.17.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
