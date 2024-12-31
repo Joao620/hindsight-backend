@@ -6,6 +6,12 @@ const logger = createLogger({
   format: format.json(),
   transports: [
     new transports.File({ filename: 'le_logs.log' }),
+    new transports.Console({
+      format: format.combine(
+        format.colorize(),
+        format.simple()
+      )
+    }),
   ],
 });
 
