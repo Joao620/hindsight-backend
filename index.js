@@ -64,8 +64,9 @@ webSocketServer.on("connection", (client, request) => {
   let lastContact = Date.now();
 
   client.on("pong", () => {
-    log('pongtime', Date.now() - lastContact);
-    lastContact = Date.now();
+    const newNow = Date.now();
+    log('pongtime', newNow - lastContact);
+    lastContact = newNow;
     clearTimeout(timeout);
     timeout = setClientTimeout(client);
   });
