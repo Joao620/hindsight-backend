@@ -108,7 +108,7 @@ webServer.on("request", (request, response) => {
   }
   response.end();
 
-  logger.log(request.method, url, response.statusCode);
+  logger.info(request.method, url, response.statusCode);
 });
 
 webServer.on("upgrade", (request, socket, head) => {
