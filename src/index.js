@@ -21,7 +21,7 @@ function setClientTimeout(client) {
 }
 
 //postgres://hindsight:banana123@localhost:5432/hindsight-db
-logger.silly('database url ' + process.env.DATABASE_URL);
+logger.info('database url ' + process.env.DATABASE_URL);
 
 // sql`SELECT * FROM "tableforroom-cvgvzhhjq3"`
 //   .then((result) => console.log(result))
