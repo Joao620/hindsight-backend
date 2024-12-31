@@ -23,9 +23,16 @@ function setClientTimeout(client) {
 //postgres://hindsight:banana123@localhost:5432/hindsight-db
 logger.info('database url ' + process.env.DATABASE_URL);
 
+// const sql = postgres("postgres://u2dfm420h05jmi:pe4c6a587a3789f19d51e30ab1e0ed83a43d6e25255cdc72e80c394dadbebd0bb@c11ai4tgvdcf54.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d2n790m55vomne",
+//   {
+//     ssl: {
+//       rejectUnauthorized: false,
+//     },
+//   }
+// )
 // sql`SELECT * FROM "tableforroom-cvgvzhhjq3"`
 //   .then((result) => console.log(result))
-//   .catch((err) => log("Database connection failed", err));
+//   .catch((err) => console.log("Database connection failed", err));
 
 const webServer = createServer();
 const webSocketServer = new WebSocketServer({ noServer: true });
@@ -33,7 +40,7 @@ const synchronizer = createWsServer(webSocketServer,
   (pathId) =>
     createPostgresPersister(
       createMergeableStore(),
-      postgres(process.env.DATABASE_URL),
+      postgres(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false } }),
       'tableforroom-' + pathId
     )
 );
