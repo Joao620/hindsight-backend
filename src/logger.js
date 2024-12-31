@@ -5,7 +5,7 @@ const logger = createLogger({
   exitOnError: false,
   format: format.json(),
   transports: [
-    new transports.File({ filename: 'datadog/nodejs.d/le_logs.log' }),
+    new transports.File({ filename: 'le_logs.log' }),
   ],
 });
 
