@@ -33,7 +33,7 @@ const synchronizer = createWsServer(webSocketServer,
   (pathId) =>
     createPostgresPersister(
       createMergeableStore(),
-      postgres("postgres://hindsight:banana123@localhost:5432/hindsight-db"),
+      postgres(process.env.DATABASE_URL),
       'tableforroom-' + pathId
     )
 );
