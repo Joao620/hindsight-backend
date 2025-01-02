@@ -83,10 +83,10 @@ webSocketServer.on("connection", (client, request) => {
     clearInterval(ping);
     clearTimeout(timeout);
 
-    logger.info("CLOSED", url, code, clientIds.length, clientIds);
+    logger.info(`CLOSED, ${url}, ${code}, ${clientIds.length}, ${clientIds}`);
   });
 
-  logger.info("CONNECTED", url, clientIds.length, clientIds);
+  logger.info(`CONNECTED, ${url}, ${clientIds.length}, ${clientIds}`);
 });
 
 webServer.on("request", (request, response) => {
@@ -108,7 +108,7 @@ webServer.on("request", (request, response) => {
   }
   response.end();
 
-  logger.info(request.method, url, response.statusCode);
+  logger.info(`Got request: ${request.method} ${url} ${response.statusCode}`);
 });
 
 webServer.on("upgrade", (request, socket, head) => {
