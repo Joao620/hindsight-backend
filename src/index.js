@@ -34,15 +34,22 @@ logger.info('database url ' + process.env.DATABASE_URL);
 //   .then((result) => console.log(result))
 //   .catch((err) => console.log("Database connection failed", err));
 
+/** @type {Map<string, import('tinybase').Store>} */
+const pathId2Store = new Map();
+
 const webServer = createServer();
 const webSocketServer = new WebSocketServer({ noServer: true });
 const synchronizer = createWsServer(webSocketServer, 
-  (pathId) =>
-    createPostgresPersister(
-      createMergeableStore(),
-      postgres(process.env.DATABASE_URL, { ssl: { rejectUnauthorized: false } }),
+  (pathId) => {
+    const le_store = createMergeableStore();
+    pathId2Store.set(pathId, le_store);
+    
+    return createPostgresPersister(
+      le_store,
+      postgres("postgres://hindsight:banana123@localhost:5432/hindsight-db"),
       'tableforroom-' + pathId
     )
+  }
 );
 
 // (pathId) =>
@@ -51,24 +58,34 @@ const synchronizer = createWsServer(webSocketServer,
 //     new sqlite3.Database(pathId + ".sqlite3"),
 //   )
 
+synchronizer.addClientIdsListener(null, (server, pathId, clientId, addedOrRemoved) => {
+  const action = addedOrRemoved == -1 ? "removed" : "added";
+  logger.info(`Client ${clientId} ${action} room ${
+    pathId}, ${server.getClientIds(pathId).length} clients left`);	
+
+  const maybeStore = pathId2Store.get(pathId)
+  if (!maybeStore) {
+    logger.error(`Store not found for ${pathId}`);
+    return;
+  }
+
+  const participants_count = Math.max(0, server.getClientIds(pathId).length - 1);
+
+  maybeStore.setValue("participants_count", participants_count);
+})
+
 
 webSocketServer.on("connection", (client, request) => {
-  const url = new URL(
-    request.url,
-    `ws://${request.headers.host || "localhost"}`
-  );
-  const roomId = url.pathname.slice(1);
-  const clientIds = synchronizer.getClientIds(roomId);
-
-  let timeout = setClientTimeout(client);
+  let clientTimeout = setClientTimeout(client);
   let lastContact = Date.now();
 
   client.on("pong", () => {
     const newNow = Date.now();
     logger.verbose('pongtime', newNow - lastContact - TTL);
     lastContact = newNow;
-    clearTimeout(timeout);
-    timeout = setClientTimeout(client);
+
+    clearTimeout(clientTimeout);
+    clientTimeout = setClientTimeout(client);
   });
 
   const ping = setInterval(() => {
@@ -78,15 +95,9 @@ webSocketServer.on("connection", (client, request) => {
   }, TTL);
 
   client.on("close", (code, readon) => {
-    const clientIds = synchronizer.getClientIds(roomId);
-
     clearInterval(ping);
-    clearTimeout(timeout);
-
-    logger.info(`CLOSED, ${url}, ${code}, ${clientIds.length}, ${clientIds}`);
+    clearTimeout(clientTimeout);
   });
-
-  logger.info(`CONNECTED, ${url}, ${clientIds.length}, ${clientIds}`);
 });
 
 webServer.on("request", (request, response) => {
