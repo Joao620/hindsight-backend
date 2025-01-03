@@ -47,7 +47,7 @@ const synchronizer = createWsServer(webSocketServer,
     return createPostgresPersister(
       le_store,
       postgres("postgres://hindsight:banana123@localhost:5432/hindsight-db"),
-      'tableforroom-' + pathId
+      'table-for-room-' + pathId
     )
   }
 );
