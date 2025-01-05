@@ -47,7 +47,11 @@ const synchronizer = createWsServer(webSocketServer,
 
     return createPostgresPersister(
       le_store,
-      postgres(process.env.DATABASE_URL),
+      postgres(process.env.DATABASE_URL, {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      }),
       'table-for-room-' + pathId
     )
   }
