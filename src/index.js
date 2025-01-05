@@ -22,7 +22,6 @@ function setClientTimeout(client) {
 }
 
 //postgres://hindsight:banana123@localhost:5432/hindsight-db
-logger.info('database url ' + process.env.DATABASE_URL);
 
 // const sql = postgres("nothing",
 //   {
@@ -44,7 +43,8 @@ const synchronizer = createWsServer(webSocketServer,
   (pathId) => {
     const le_store = createMergeableStore();
     pathId2Store.set(pathId, le_store);
-    
+    logger.info('database url ' + process.env.DATABASE_URL);
+
     return createPostgresPersister(
       le_store,
       postgres(process.env.DATABASE_URL),
