@@ -5,6 +5,7 @@ import { createMergeableStore } from "tinybase";
 import { createPostgresPersister } from 'tinybase/persisters/persister-postgres';
 import postgres from "postgres";
 import logger from "./logger.js";
+import sendUserCountMetric from "./datadog.js";
 
 // Client's deadline to respond to a ping, in milliseconds.
 const TTL = 15 * 1000;
@@ -58,10 +59,14 @@ const synchronizer = createWsServer(webSocketServer,
 //     new sqlite3.Database(pathId + ".sqlite3"),
 //   )
 
+let userCount = 0;
+
 synchronizer.addClientIdsListener(null, (server, pathId, clientId, addedOrRemoved) => {
   const action = addedOrRemoved == -1 ? "removed" : "added";
+  const participants_count = server.getClientIds(pathId).length;
+
   logger.info(`Client ${clientId} ${action} room ${
-    pathId}, ${server.getClientIds(pathId).length} clients left`);	
+    pathId}, ${participants_count} clients left`);	
 
   const maybeStore = pathId2Store.get(pathId)
   if (!maybeStore) {
@@ -69,9 +74,10 @@ synchronizer.addClientIdsListener(null, (server, pathId, clientId, addedOrRemove
     return;
   }
 
-  const participants_count = Math.max(0, server.getClientIds(pathId).length - 1);
-
   maybeStore.setValue("participants_count", participants_count);
+
+  userCount += addedOrRemoved;
+  sendUserCountMetric(userCount);
 })
 
 

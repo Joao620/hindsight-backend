@@ -7,9 +7,11 @@
     "start": "node src/index.js"
   },
   "dependencies": {
+    "@datadog/datadog-api-client": "^1.31.0",
+    "dotenv": "^16.4.7",
     "postgres": "^3.4.5",
     "sqlite3": "^5.1.7",
-    "tinybase": "^5.4.0",
+    "tinybase": "^5.4.5",
     "winston": "^3.17.0",
     "ws": "^8.18.0"
   },
