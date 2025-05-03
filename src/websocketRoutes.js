@@ -2,6 +2,7 @@
 
 import { WebSocketServer } from "ws";
 import { createWsServer } from "tinybase/synchronizers/synchronizer-ws-server";
+import { createPostgresPersister } from "tinybase/persisters/persister-postgres";
 import { createMergeableStore } from "tinybase";
 import logger from "./logger.js";
 import { sendUserCountMetric } from "./datadog.js";
