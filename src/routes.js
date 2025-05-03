@@ -25,13 +25,13 @@ const limiter = flameLimit({
  */
 const routes = (req, res) => {
   const parsedUrl = url.parse(req.url, true);
+  res.writeHead(200, { "Access-Control-Allow-Origin": "https://hindsight-for.team" });
 
   if (req.method === "GET" && parsedUrl.pathname === "/wake-up") {
     limiter(req, res, (err) => {
       if (err) {
         return;
       }
-      res.writeHead(200, { "Access-Control-Allow-Origin": "*" });
       res.end();
     });
   } else if (req.method === "POST" && parsedUrl.pathname === "/transcribe") {
