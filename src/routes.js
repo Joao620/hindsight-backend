@@ -25,6 +25,18 @@ const limiter = flameLimit({
  */
 const routes = (req, res) => {
   const parsedUrl = url.parse(req.url, true);
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": "https://hindsight-for.team",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    });
+    res.end();
+    return;
+  }
+
   res.writeHead(200, { "Access-Control-Allow-Origin": "https://hindsight-for.team" });
 
   if (req.method === "GET" && parsedUrl.pathname === "/wake-up") {
