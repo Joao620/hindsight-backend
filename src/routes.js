@@ -9,7 +9,6 @@ import strategies from "flame-limit/strategies";
 const limiter = flameLimit({
   limit: 6,
   windowMs: 30 * 1000,
-  trustProxy: false,
   strategy: 'token',
 
   onLimit: (req, res, next, resetTime) => {
@@ -40,6 +39,11 @@ const routes = (req, res) => {
   res.writeHead(200, { "Access-Control-Allow-Origin": "https://hindsight-for.team" });
 
   if (req.method === "GET" && parsedUrl.pathname === "/wake-up") {
+    limiter(req, res, (err) => {
+      if (err) {
+        return;
+      }
+    });
     res.end();
   } else if (req.method === "POST" && parsedUrl.pathname === "/transcribe") {
     limiter(req, res, (err) => {
