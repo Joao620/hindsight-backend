@@ -1,41 +1,55 @@
-import { v2 as datadogv2, client } from '@datadog/datadog-api-client';
-import 'dotenv/config'
+import { v2 as datadogv2, client } from "@datadog/datadog-api-client";
+import "dotenv/config";
 
 const configuration = client.createConfiguration();
 
 configuration.setServerVariables({
-    site: "us5.datadoghq.com"
+  site: "us5.datadoghq.com",
 });
 
 const apiInstance = new datadogv2.MetricsApi(configuration);
 
-datadogv2.Tag
-
-function sendUserCountMetric(userCount) {
-    const params = {
-        body: {
-            series: [
-                {
-                    metric: 'users.count',
-                    points: [
-                        {
-                            timestamp: Math.floor(new Date().getTime() / 1000),
-                            value: userCount,
-                        },
-                    ],
-                    type: 3,
-                },
-            ],
-        },
-    };
-
-    apiInstance.submitMetrics(params)
-        .then((data) => {
-            console.log('API called successfully. Returned data: ' + JSON.stringify(data));
-        })
-        .catch((error) => {
-            console.error('Error sending metric:', error);
-        });
+function submitMetrics(params){
+  apiInstance
+    .submitMetrics(params)
+    .catch((error) => {
+      console.error("Error sending metric:", error);
+    });
 }
 
-export default sendUserCountMetric;
+function genericMetric(metricName, type, value){
+  /** @type {datadogv2.MetricsApiSubmitMetricsRequest} */
+  const params = {
+    body: {
+      series: [
+        {
+          metric: metricName,
+          points: [
+            {
+              timestamp: Math.floor(new Date().getTime() / 1000),
+              value: value,
+            },
+          ],
+          type: type,
+        },
+      ],
+    },
+  };
+
+  submitMetrics(params)
+}
+
+function sendUserCountMetric(userCount) {
+  genericMetric("users.count", 3, userCount)
+}
+
+function sendSucessTranscribeTask() {
+  genericMetric("transcribe.task.count", 1, 1)
+}
+
+function sendErrorTranscribeTask() {
+  genericMetric("transcribe.task.errors", 1, 1)
+}
+
+
+export { sendUserCountMetric, sendSucessTranscribeTask, sendErrorTranscribeTask };

@@ -1,9 +1,0 @@
-{"level":"info","message":"Hello simple log from template!"}
-{"level":"info","message":"Hello simple log!"}
-{"color":"blue","level":"info","message":"Hello log with metas"}
-{"level":"info","message":"database url undefined"}
-{"level":"info","message":"Listening on http://localhost:5000"}
-{"level":"info","message":"Hello simple log!"}
-{"color":"blue","level":"info","message":"Hello log with metas"}
-{"level":"info","message":"database url undefined"}
-{"level":"info","message":"Listening on http://localhost:5000"}
