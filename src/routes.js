@@ -40,12 +40,7 @@ const routes = (req, res) => {
   res.writeHead(200, { "Access-Control-Allow-Origin": "https://hindsight-for.team" });
 
   if (req.method === "GET" && parsedUrl.pathname === "/wake-up") {
-    limiter(req, res, (err) => {
-      if (err) {
-        return;
-      }
-      res.end();
-    });
+    res.end();
   } else if (req.method === "POST" && parsedUrl.pathname === "/transcribe") {
     limiter(req, res, (err) => {
       if (err) {
