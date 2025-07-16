@@ -1,80 +1,84 @@
-'use strict';
-
-import transcribe from "./transcribeService.js";
-import url from "node:url";
+import Koa from "koa";
+import { transcribe, getTranscription } from "./transcribeService.js";
+import rateLimiter from "./limiter.js";
 import logger from "./logger.js";
-import flameLimit from 'flame-limit';
-import strategies from "flame-limit/strategies";
+import MySimpleRouter from "./mySimpleRouter.js";
+import readRequestBodyBuffer from "./readRequestBodyBuffer.js";
 
-const limiter = flameLimit({
-  limit: 6,
-  windowMs: 30 * 1000,
-  strategy: 'token',
+const router = new MySimpleRouter();
 
-  onLimit: (req, res, next, resetTime) => {
-    res.writeHead(429);
-    res.end()
+// Wake-up
+router.get("/wake-up", async (ctx) => {
+  await rateLimiter(ctx);
+  ctx.status = 200;
+  ctx.body = "OK";
+});
+
+// Transcribe POST
+router.post("/transcribe", async (ctx) => {
+  await rateLimiter(ctx);
+  if (ctx.res.writableEnded) return
+
+  const audioFile = await readRequestBodyBuffer(ctx, 768 * 1024)
+
+  const contentType = ctx.headers["content-type"];
+  const audioType = contentType
+    .split("/").pop()
+    .split(";").shift()
+    .slice(0, 4); // Extract the audio type (e.g., 'mp3', 'wav')
+
+  const taskId = transcribe(audioFile, audioType);
+
+  ctx.body = taskId;
+  ctx.status = 200;
+});
+
+// Transcribe GET with param
+router.get("/transcribe/:id", async (ctx) => {
+  const taskId = ctx.params.id;
+  if (!taskId || taskId.length !== 36 || !/^[a-zA-Z0-9\-]+$/.test(taskId)) {
+    ctx.status = 400;
+    ctx.body = { error: "taskId must be alphanumeric" };
+    return;
+  }
+  const transcriptionResult = getTranscription(taskId);
+  if (!transcriptionResult) {
+    ctx.status = 404;
+  } else if (transcriptionResult.status === "processing") {
+    ctx.status = 202;
+    ctx.body = "Transcription in progress";
+  } else if (transcriptionResult.status === "completed") {
+    ctx.status = 200;
+    ctx.body = transcriptionResult.result;
+  } else if (transcriptionResult.status === "failed") {
+    ctx.status = 500;
+    ctx.body = transcriptionResult.result;
+  } else {
+    ctx.status = 500;
+    ctx.body = "Transcription failed";
   }
 });
 
-/**
- *
- * @param {import('http').IncomingMessage}
- * @param {import('http').ServerResponse}
- */
-const routes = (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "https://hindsight-for.team",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization"
-    });
-    res.end();
-    return;
+// Error log route
+router.post("/error", async (ctx) => {
+  try {
+    const { place, msg } = ctx.request.body;
+    logger.error(`[client-frontend] on [${place}] with the message: ${msg}`, { where: "client-frontend" });
+    ctx.status = 200;
+    ctx.body = "Logged";
+  } catch (error) {
+    logger.error("Invalid JSON received", error);
+    ctx.status = 400;
+    ctx.body = "Invalid JSON";
   }
+});
 
-  res.writeHead(200, { "Access-Control-Allow-Origin": "https://hindsight-for.team" });
+// Room route
+router.get("/room/:id", async (ctx) => {
+  ctx.status = 426;
+  ctx.set("Connection", "Upgrade");
+  ctx.set("Upgrade", "websocket");
+  ctx.body = "";
+});
 
-  if (req.method === "GET" && parsedUrl.pathname === "/wake-up") {
-    limiter(req, res, (err) => {
-      if (err) {
-        return;
-      }
-    });
-    res.end();
-  } else if (req.method === "POST" && parsedUrl.pathname === "/transcribe") {
-    limiter(req, res, (err) => {
-      if (err) {
-        return;
-      }
-      transcribe(req, res);
-    });
-  } else if (req.method === "POST" && parsedUrl.pathname === "/error") {
-    let rawData = "";
-    req.on("data", (chunk) => {
-      rawData += chunk;
-    });
-    req.on("end", () => {
-      try {
-        const jsonReq = JSON.parse(rawData);
-        logger.error(
-          `[client-frontend] on [${jsonReq.place}] with the message: ${jsonReq.msg}`,
-          { where: "client-frontend" },
-        );
-      } catch (error) {
-        logger.error("Invalid JSON received", error);
-      }
-    });
-  } else if (parsedUrl.pathname.startsWith("/room/")) {
-    res.writeHead(426, { Connection: "Upgrade", Upgrade: "websocket" });
-    res.end();
-  } else {
-    res.writeHead(404);
-    res.end("Not Found");
-  }
-};
-
-export default routes;
+export default router;

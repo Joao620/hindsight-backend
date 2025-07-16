@@ -3,7 +3,7 @@ import logger from "./logger.js";
 class TranscriptionOptions {
     constructor() {
         this.model = "onnx-community/whisper-large-v3-turbo_timestamped";
-        this.language = "pt";
+        this.language = "en";
         this.returnTimestamps = false;
         this.webvtt = false;
     }
@@ -52,9 +52,12 @@ class WoolBallSpeechToTextService {
         });
     }
 
-    async transcribeFromFile(audioData, options = new TranscriptionOptions()) {
+    async transcribeFromFile(audioData, contentAudio, options = new TranscriptionOptions()) {
         const formData = new FormData();
-        formData.append('audio', new Blob([audioData], {type: "audio/webm"}), 'audio.webm');
+        formData.append('audio', new Blob(
+            [audioData], {type: "audio/" + contentAudio}), 
+            'audio.' + contentAudio);
+            
         formData.append('model', options.model);
         formData.append('language', options.language);
         formData.append('returnTimestamps', options.returnTimestamps.toString());
@@ -63,7 +66,8 @@ class WoolBallSpeechToTextService {
         const response = await fetch(`${this.baseUrl}/speech-to-text`, {
             method: 'POST',
             headers: this.headers,
-            body: formData
+            body: formData,
+            
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

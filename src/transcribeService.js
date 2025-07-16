@@ -1,52 +1,59 @@
 import { WoolBallSpeechToTextService } from "./woolball.js";
 import logger from "./logger.js";
-import { writeFileSync } from "fs";
-import { sendSucessTranscribeTask, sendErrorTranscribeTask } from "./datadog.js"
-
-const KIBIBYTE = 1024
-const MAX_FILE_SIZE = 768 * KIBIBYTE
+import { sendErrorTranscribeTask } from "./datadog.js";
 
 const woolService = new WoolBallSpeechToTextService(process.env.WOOLBALL);
 
+// In-memory store for transcription tasks
 /**
- * @param {import('http').IncomingMessage}
- * @param {import('http').ServerResponse}
+ * @type {Map<string, {status: string, result?: string}>}
  */
-function transcribe(request, response) {
-  const contentType = request.headers["content-type"];
-  const audioType = contentType
-    .split("/").pop()
-    .split(";").shift()
-    .slice(0, 4); // Extract the audio type (e.g., 'mp3', 'wav')
+const transcriptionTasks = new Map();
 
-  let audioData = Buffer.alloc(0);
+/**
+ * 
+ * @param {import('koa').Context} ctx 
+ * @param {Buffer} audioFile 
+ * @param {string} audioType 
+ */
+function transcribe(audioData, audioType){
+    const taskId = crypto.randomUUID()
+    transcriptionTasks.set(taskId, { status: 'processing' });
 
-  request.on("data", (chunk) => {
-    audioData = Buffer.concat([audioData, chunk]);
+    //startTranscription(taskId, audioData, audioType);
+    startTranscriptionMocked(taskId, audioData, audioType);
 
-    if (audioData.length > MAX_FILE_SIZE) {
-      response.writeHead(413, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ error: "File size exceeds the limit" }));
-      return;
-    }
-  });
-
-  response.setHeader("Access-Control-Allow-Origin", "https://hindsight-for.team");
-  response.setHeader("Content-Type", "application/json");
-
-  request.on("end", async () => {
-    try {
-      const transcriptionResult = await woolService.transcribeFromFile(audioData);
-      response.writeHead(200);
-      response.end(JSON.stringify(transcriptionResult));
-      sendSucessTranscribeTask()
-    } catch (error) {
-      logger.error(`[Transcription error] ${JSON.stringify(error)}`, { transcribeService: true } );
-      response.writeHead(500);
-      response.end(JSON.stringify({ error: error.message }));
-      sendErrorTranscribeTask()
-    }
-  });
+    return taskId
 }
 
-export default transcribe
+function startTranscriptionMocked(taskId, audioData){
+  setTimeout(() => {
+    transcriptionTasks.set(taskId, { status: 'completed', result: "Mocked data" });
+  }, 10000);
+}
+
+/**
+ * @param {string} taskId
+ * @param {Buffer} audioData
+ */
+async function startTranscription(taskId, audioData, audioType) {
+  try {
+    logger.info(`[Transcription] ${taskId} ${audioType}`, { transcribeService: true });
+    const transcriptionResult = await woolService.transcribeFromFile(audioData, audioType);
+    transcriptionTasks.set(taskId, { status: 'completed', result: transcriptionResult.data });
+  } catch (error) {
+    console.log(error)
+    logger.error(`[Transcription error] ${JSON.stringify(error)}`, { transcribeService: true });
+    transcriptionTasks.set(taskId, { status: 'failed', error: error.message });
+    sendErrorTranscribeTask();
+  }
+}
+
+/**
+ * @param {string} taskId
+ */
+function getTranscription(taskId) {
+  return transcriptionTasks.get(taskId);
+}
+
+export { transcribe, getTranscription };
