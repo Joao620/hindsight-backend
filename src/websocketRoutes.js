@@ -10,7 +10,6 @@ import postgres from "postgres";
 
 import { parse as parseURL } from "node:url";
 import { createFilePersister } from "tinybase/persisters/persister-file";
-import { path } from "koa/lib/request";
 
 // Client's deadline to respond to a ping, in milliseconds.
 const WS_TTL = 10 * 1000;
@@ -105,7 +104,7 @@ function createTinySyncSynchronizer(webSocketServer) {
         'table-for-room-' + pathId
       )
     }
-    
+
     return persister
   });
 
