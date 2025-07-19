@@ -1,4 +1,3 @@
-import Koa from "koa";
 import { transcribe, getTranscription } from "./transcribeService.js";
 import rateLimiter from "./limiter.js";
 import logger from "./logger.js";
@@ -14,48 +13,116 @@ router.get("/wake-up", async (ctx) => {
   ctx.body = "OK";
 });
 
-// Transcribe POST
+// Audio Submission Endpoint
 router.post("/transcribe", async (ctx) => {
   await rateLimiter(ctx);
-  if (ctx.res.writableEnded) return
+  if (ctx.res.writableEnded) return;
 
-  const audioFile = await readRequestBodyBuffer(ctx, 768 * 1024)
+  try {
+    // Validate content type
+    const contentType = ctx.headers["content-type"];
+    if (!contentType) {
+      ctx.status = 400;
+      ctx.body = { error: "Missing audio data" };
+      return;
+    }
 
-  const contentType = ctx.headers["content-type"];
-  const audioType = contentType
-    .split("/").pop()
-    .split(";").shift()
-    .slice(0, 4); // Extract the audio type (e.g., 'mp3', 'wav')
+    // Check if it's multipart/form-data or audio/*
+    const isMultipart = contentType.startsWith("multipart/form-data");
+    const isAudio = contentType.startsWith("audio/");
 
-  const taskId = transcribe(audioFile, audioType);
+    if (!isMultipart && !isAudio) {
+      ctx.status = 400;
+      ctx.body = { error: "Invalid audio format" };
+      return;
+    }
 
-  ctx.body = taskId;
-  ctx.status = 200;
+    // Read audio data with size limit
+    const audioFile = await readRequestBodyBuffer(ctx, 768 * 1024);
+
+    if (!audioFile || audioFile.length === 0) {
+      ctx.status = 400;
+      ctx.body = { error: "Missing audio data" };
+      return;
+    }
+
+    // Extract audio type
+    const audioType = contentType
+      .split("/").pop()
+      .split(";").shift()
+      .slice(0, 4);
+
+    // Submit for transcription
+    const taskId = transcribe(audioFile, audioType);
+
+    ctx.status = 201;
+    ctx.body = { taskId };
+
+  } catch (error) {
+    if (error.status === 413) {
+      ctx.status = 413;
+      ctx.body = { error: "Audio file exceeds maximum size limit of 768KB" };
+    } else {
+      logger.error("Failed to process audio submission", error);
+      ctx.status = 500;
+      ctx.body = { error: "Failed to process audio submission" };
+    }
+  }
 });
 
-// Transcribe GET with param
-router.get("/transcribe/:id", async (ctx) => {
-  const taskId = ctx.params.id;
-  if (!taskId || taskId.length !== 36 || !/^[a-zA-Z0-9\-]+$/.test(taskId)) {
-    ctx.status = 400;
-    ctx.body = { error: "taskId must be alphanumeric" };
-    return;
-  }
-  const transcriptionResult = getTranscription(taskId);
-  if (!transcriptionResult) {
-    ctx.status = 404;
-  } else if (transcriptionResult.status === "processing") {
-    ctx.status = 202;
-    ctx.body = "Transcription in progress";
-  } else if (transcriptionResult.status === "completed") {
+// Transcription Status Polling Endpoint
+router.get("/transcribe/:taskId", async (ctx) => {
+  try {
+    const taskId = ctx.params.taskId;
+
+    // Validate taskId format
+    if (!taskId || taskId.length !== 36 || !/^[a-zA-Z0-9\-]+$/.test(taskId)) {
+      ctx.status = 400;
+      ctx.body = { error: "Invalid task ID format" };
+      return;
+    }
+
+    const transcriptionResult = getTranscription(taskId);
+
+    if (!transcriptionResult) {
+      ctx.status = 404;
+      ctx.body = { error: "Task not found" };
+      return;
+    }
+
     ctx.status = 200;
-    ctx.body = transcriptionResult.result;
-  } else if (transcriptionResult.status === "failed") {
+
+    if (transcriptionResult.status === "processing") {
+      ctx.body = {
+        status: "processing",
+        taskId: taskId
+      };
+    } else if (transcriptionResult.status === "completed") {
+      ctx.body = {
+        status: "completed",
+        taskId: taskId,
+        result: {
+          data: transcriptionResult.result
+        }
+      };
+    } else if (transcriptionResult.status === "failed") {
+      ctx.body = {
+        status: "failed",
+        taskId: taskId,
+        error: transcriptionResult.error || "Transcription failed"
+      };
+    } else {
+      ctx.body = {
+        status: "failed",
+        taskId: taskId,
+        error: "Unknown transcription status"
+      };
+    }
+
+  } catch (error) {
+    logger.error("Failed to retrieve task status", error);
     ctx.status = 500;
-    ctx.body = transcriptionResult.result;
-  } else {
-    ctx.status = 500;
-    ctx.body = "Transcription failed";
+    ctx.body = { error: "Failed to retrieve task status" };
   }
 });
 

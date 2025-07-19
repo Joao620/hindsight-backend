@@ -5,8 +5,6 @@ import logger from "./logger.js";
 import myRoutes from './routes.js';
 import { initiateWebSocketServer } from './websocketRoutes.js';
 
-import { WebSocket, WebSocketServer } from "ws";
-
 import Koa from 'koa'
 import http from 'node:http';
 

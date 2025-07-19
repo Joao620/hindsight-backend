@@ -10,6 +10,7 @@ import postgres from "postgres";
 
 import { parse as parseURL } from "node:url";
 import { createFilePersister } from "tinybase/persisters/persister-file";
+import { path } from "koa/lib/request";
 
 // Client's deadline to respond to a ping, in milliseconds.
 const WS_TTL = 10 * 1000;
@@ -85,15 +86,14 @@ function createTinySyncSynchronizer(webSocketServer) {
 
   const synchronizer = createWsServer(webSocketServer, (pathId) => {
     const le_store = createMergeableStore();
+    pathId = pathId.split("/").join("-")
     pathId2Store.set(pathId, le_store);
 
-    logger.info("database url " + process.env.DATABASE_URL);
     let persister
     if(process.env.NO_DB){
       persister = createFilePersister(
         le_store,
-        //`table-for-room-${pathId}.json` )
-        `/home/joao/programas/hindsight-backend/persisted.json` )
+        `./persisted-${pathId}.dale` )
     } else {
       persister = createPostgresPersister(
         le_store,
@@ -105,11 +105,8 @@ function createTinySyncSynchronizer(webSocketServer) {
         'table-for-room-' + pathId
       )
     }
-
-    return [
-      persister,
-      (store) => { console.log("ola mundo") }
-    ]
+    
+    return persister
   });
 
   let userCount = 0;
