@@ -20,8 +20,8 @@ function transcribe(audioData, audioType){
     const taskId = crypto.randomUUID()
     transcriptionTasks.set(taskId, { status: 'processing' });
 
-    //startTranscription(taskId, audioData, audioType);
-    startTranscriptionMocked(taskId, audioData, audioType);
+    startTranscription(taskId, audioData, audioType);
+    //startTranscriptionMocked(taskId, audioData, audioType);
 
     return taskId
 }
