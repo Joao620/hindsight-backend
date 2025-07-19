@@ -85,7 +85,6 @@ function createTinySyncSynchronizer(webSocketServer) {
 
   const synchronizer = createWsServer(webSocketServer, (pathId) => {
     const le_store = createMergeableStore();
-    pathId = pathId.split("/").join("-")
     pathId2Store.set(pathId, le_store);
 
     let persister
