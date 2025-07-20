@@ -18,9 +18,7 @@ function submitMetrics(params){
 }
 
 function genericMetric(metricName, type, value){
-  if(!configuration.authMethods[0]){
-    return
-  }
+
   /** @type {datadogv2.MetricsApiSubmitMetricsRequest} */
   const params = {
     body: {
