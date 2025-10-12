@@ -75,6 +75,12 @@ function wsOnConnection(webSocketServer) {
   });
 }
 
+const postgresConnection = postgres(process.env.DATABASE_URL, {
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
 /**
  *
  * @param {WebSocketServer} webSocketServer
@@ -95,11 +101,7 @@ function createTinySyncSynchronizer(webSocketServer) {
     } else {
       persister = createPostgresPersister(
         le_store,
-        postgres(process.env.DATABASE_URL, {
-          ssl: {
-            rejectUnauthorized: false,
-          },
-        }),
+        postgresConnection,
         'table-for-room-' + pathId
       )
     }
