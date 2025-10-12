@@ -18,6 +18,7 @@ function submitMetrics(params){
 }
 
 function genericMetric(metricName, type, value){
+  if (!process.env.DD_API_KEY) return;
 
   /** @type {datadogv2.MetricsApiSubmitMetricsRequest} */
   const params = {
