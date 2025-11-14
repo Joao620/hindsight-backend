@@ -75,11 +75,11 @@ function wsOnConnection(webSocketServer) {
   });
 }
 
-const postgresConnection = postgres(process.env.DATABASE_URL, {
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
+// const postgresCxonnection = postgres(process.env.DATABASE_URL, {
+//   ssl: {
+//     rejectUnauthorized: false,
+//   },
+// });
 
 /**
  *
@@ -99,9 +99,14 @@ function createTinySyncSynchronizer(webSocketServer) {
         le_store,
         `./persisted-${pathId}.dale` )
     } else {
+      console.log("usingDB")
       persister = createPostgresPersister(
         le_store,
-        postgresConnection,
+        postgres(process.env.DATABASE_URL, {
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        }),
         'table-for-room-' + pathId
       )
     }
