@@ -14,7 +14,7 @@
     "koa": "^3.0.0",
     "koa-compose": "^4.1.0",
     "postgres": "^3.4.7",
-    "tinybase": "^6.3.0",
+    "tinybase": "^6.7.1",
     "winston": "^3.17.0",
     "ws": "^8.18.3"
   },
