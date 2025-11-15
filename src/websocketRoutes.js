@@ -75,11 +75,14 @@ function wsOnConnection(webSocketServer) {
   });
 }
 
-// const postgresCxonnection = postgres(process.env.DATABASE_URL, {
-//   ssl: {
-//     rejectUnauthorized: false,
-//   },
-// });
+const sql = postgres(process.env.DATABASE_URL, {
+  ssl: {
+    rejectUnauthorized: false,
+  },
+  //max: 1,
+  idle_timeout: 5 * 60,
+  //debug: (con, query, params) => console.log(`[DB][${con}] ${query} ${JSON.stringify(params)}`)
+})
 
 /**
  *
@@ -93,25 +96,18 @@ function createTinySyncSynchronizer(webSocketServer) {
     const le_store = createMergeableStore();
     pathId2Store.set(pathId, le_store);
 
-    let persister
     if(process.env.NO_DB){
-      persister = createFilePersister(
+      return createFilePersister(
         le_store,
         `./persisted-${pathId}.dale` )
     } else {
-      console.log("usingDB")
-      persister = createPostgresPersister(
+      return createPostgresPersister(
         le_store,
-        postgres(process.env.DATABASE_URL, {
-          ssl: {
-            rejectUnauthorized: false,
-          },
-        }),
-        'table-for-room-' + pathId
+        sql,
+        'table-for-room-' + pathId,
+        (query, params) => console.log(`[DB] ${query} ${JSON.stringify(params)}`)
       )
     }
-
-    return persister
   });
 
   let userCount = 0;
