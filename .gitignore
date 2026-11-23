@@ -1,5 +1,12 @@
-node_modules
+node_modules/
 compose.override.
 *.log
-.env
+.env*
+.dev.vars*
 *.nogit.*
+
+# Cloudflare
+.wrangler/
+
+# Deno
+deno.lock
